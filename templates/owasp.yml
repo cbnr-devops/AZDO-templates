@@ -1,0 +1,24 @@
+parameters:
+  projectName: '$(IMAGE_NAME)'
+
+steps:
+  - script: |
+      mkdir -p reports
+    displayName: Create Reports Directory
+
+  - task: dependency-check-build-task@6
+    inputs:
+      projectName: ${{ parameters.projectName }}
+      scanPath: '.'
+      format: 'HTML,XML'
+      outputDirectory: 'reports'
+      additionalArguments: '--nvdApiDelay 2000 --disableYarnAudit --disableOssIndex'
+    displayName: OWASP Dependency Check
+
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'NUnit'
+      testResultsFiles: 'reports/dependency-check-report.xml'
+      searchFolder: '$(System.DefaultWorkingDirectory)'
+    condition: always()
+    displayName: Publish OWASP Results

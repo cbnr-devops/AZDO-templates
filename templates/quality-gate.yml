@@ -1,0 +1,5 @@
+steps:
+  - task: SonarQubePublish@5
+    inputs:
+      pollingTimeoutSec: '120'
+    displayName: Wait for Quality Gate
