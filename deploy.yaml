@@ -1,0 +1,27 @@
+parameters:
+  clusterName: ''
+  region: ''
+  image: ''
+  namespace: ''
+  helmPath: ''
+
+jobs:
+  - job: Deploy
+    displayName: Deploy to ${{ parameters.clusterName }}
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+      - checkout: self
+
+      - script: |
+          az aks update-kubeconfig \
+            --region ${{ parameters.region }} \
+            --name ${{ parameters.clusterName }}
+
+          helm upgrade --install app ${{ parameters.helmPath }} \
+            --set image.repository=$(echo ${{ parameters.image }} | cut -d: -f1) \
+            --set image.tag=$(echo ${{ parameters.image }} | cut -d: -f2) \
+            --namespace ${{ parameters.namespace }} \
+            --create-namespace
+        displayName: Deploy via Helm

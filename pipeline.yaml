@@ -1,0 +1,18 @@
+trigger:
+  branches:
+    include:
+      - "*"
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: ado-templates-repo
+      ref: refs/heads/main
+
+variables:
+  IMAGE_NAME: solar-system
+  IMAGE_TAG: $(Build.BuildId)
+  ECR_REPO: solar-system
+
+stages:
