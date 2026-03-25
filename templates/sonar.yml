@@ -1,0 +1,15 @@
+parameters:
+  projectKey: '$(IMAGE_NAME)'
+
+steps:
+  - task: SonarQubePrepare@5
+    inputs:
+      SonarQube: 'sonarqube'
+      scannerMode: 'CLI'
+      configMode: 'manual'
+      cliProjectKey: ${{ parameters.projectKey }}
+      cliSources: '.'
+    displayName: Prepare SonarQube Analysis
+
+  - task: SonarQubeAnalyze@5
+    displayName: Run SonarQube Analysis

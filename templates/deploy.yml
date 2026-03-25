@@ -1,0 +1,28 @@
+parameters:
+  aksCluster: ''
+  resourceGroup: ''
+  acrName: ''
+  imageName: ''
+  tag: ''
+  namespace: ''
+  helmPath: ''
+
+steps:
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: 'azure-service-connection'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az aks get-credentials \
+          --resource-group ${{ parameters.resourceGroup }} \
+          --name ${{ parameters.aksCluster }} \
+          --overwrite-existing
+
+        helm upgrade --install solar-${{ parameters.namespace }} ${{ parameters.helmPath }} \
+          --set image.repository=${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }} \
+          --set image.tag=${{ parameters.tag }} \
+          -f ${{ parameters.helmPath }}/values-${{ parameters.namespace }}.yaml \
+          --namespace ${{ parameters.namespace }} \
+          --create-namespace
+    displayName: Deploy to ${{ parameters.aksCluster }}

@@ -1,0 +1,13 @@
+parameters:
+  imageName: ''
+  tag: ''
+  target: ''
+
+steps:
+  - script: |
+      if [ -n "${{ parameters.target }}" ]; then
+        docker build --target ${{ parameters.target }} -t ${{ parameters.imageName }}:${{ parameters.tag }} .
+      else
+        docker build -t ${{ parameters.imageName }}:${{ parameters.tag }} .
+      fi
+    displayName: Build Docker Image

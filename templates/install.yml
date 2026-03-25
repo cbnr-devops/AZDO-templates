@@ -1,0 +1,12 @@
+parameters:
+  command: 'npm install'
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '18.x'
+    displayName: Install Node.js 18
+
+  - script: |
+      ${{ parameters.command }}
+    displayName: Install Dependencies

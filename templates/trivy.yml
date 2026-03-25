@@ -1,0 +1,11 @@
+parameters:
+  imageName: ''
+  tag: ''
+
+steps:
+  - script: |
+      trivy image \
+        --severity HIGH,CRITICAL \
+        --format table \
+        ${{ parameters.imageName }}:${{ parameters.tag }} || true
+    displayName: Trivy Image Scan

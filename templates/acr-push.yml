@@ -1,0 +1,27 @@
+parameters:
+  imageName: ''
+  tag: ''
+  acrName: ''
+
+steps:
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: 'azure-service-connection'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az acr login --name ${{ parameters.acrName }}
+
+        docker tag ${{ parameters.imageName }}:${{ parameters.tag }} \
+          ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:${{ parameters.tag }}
+
+        docker push ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:${{ parameters.tag }}
+
+        docker tag ${{ parameters.imageName }}:${{ parameters.tag }} \
+          ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:latest
+
+        docker push ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:latest
+
+        docker rmi ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:${{ parameters.tag }} || true
+        docker rmi ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:latest || true
+    displayName: Push to ACR
