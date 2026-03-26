@@ -1,0 +1,18 @@
+parameters:
+  workingDir: ''
+
+steps:
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: 'azure-service-connection'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        cd ${{ parameters.workingDir }}
+
+        terraform init
+
+        terraform plan -out=tfplan
+
+        terraform apply -auto-approve tfplan
+    displayName: Terraform Apply - ${{ parameters.workingDir }}
