@@ -1,0 +1,23 @@
+parameters:
+  workingDir: ''
+  backendKey: ''
+
+steps:
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: 'azure-service-connection'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        cd ${{ parameters.workingDir }}
+
+        terraform init \
+          -backend-config="resource_group_name=central-infra-tf-state-rg" \
+          -backend-config="storage_account_name=centralinfratfstate" \
+          -backend-config="container_name=tfstate" \
+          -backend-config="key=${{ parameters.backendKey }}"
+
+        terraform plan -out=tfplan
+
+        terraform apply -auto-approve tfplan
+    displayName: Terraform Apply - ${{ parameters.backendKey }}
