@@ -6,7 +6,7 @@ parameters:
 steps:
   - task: AzureCLI@2
     inputs:
-      azureSubscription: 'azure-service-connection'
+      azureSubscription: 'azure-connection'
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
