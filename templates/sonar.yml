@@ -1,5 +1,6 @@
 parameters:
-  projectKey: '$(IMAGE_NAME)'
+  projectKey: ''
+  projectName: ''
   serviceConnection: 'sonarqube-connection'
   organization: 'sks-solar-project'
 
@@ -11,6 +12,7 @@ steps:
       scannerMode: 'CLI'
       configMode: 'manual'
       cliProjectKey: ${{ parameters.projectKey }}
+      cliProjectName: ${{ parameters.projectName }}
       cliSources: '.'
     displayName: Prepare SonarCloud Analysis
 
