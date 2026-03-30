@@ -19,7 +19,7 @@ steps:
           --name ${{ parameters.aksCluster }} \
           --overwrite-existing
 
-        helm upgrade --install solar-${{ parameters.namespace }} ${{ parameters.helmPath }} \
+        helm upgrade --install ${{ parameters.imageName }}-${{ parameters.namespace }} ${{ parameters.helmPath }} \
           --set image.repository=${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }} \
           --set image.tag=${{ parameters.tag }} \
           -f ${{ parameters.helmPath }}/values-${{ parameters.namespace }}.yaml \
