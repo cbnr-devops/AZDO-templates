@@ -10,6 +10,8 @@ steps:
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
+        set -e
+
         az acr login --name ${{ parameters.acrName }}
 
         docker tag ${{ parameters.imageName }}:${{ parameters.tag }} \
