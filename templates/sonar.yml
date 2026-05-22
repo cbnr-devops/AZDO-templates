@@ -2,7 +2,7 @@ parameters:
   projectKey: ''
   projectName: ''
   serviceConnection: 'sonarqube-connection'
-  organization: 'sks-solar-project'
+  organization: 'sk-solar-project'
 
 steps:
   - task: SonarCloudPrepare@3
