@@ -1,0 +1,10 @@
+parameters:
+  - name: workingDir
+    type: string
+
+steps:
+  - script: |
+      terraform init -backend=false
+      terraform validate
+    displayName: Terraform Init and Validate
+    workingDirectory: ${{ parameters.workingDir }}
