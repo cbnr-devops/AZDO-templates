@@ -6,6 +6,9 @@ parameters:
   tag: ''
   namespace: ''
   helmPath: ''
+  wait: false
+  atomic: false
+  timeout: '5m'
 
 steps:
   - task: AzureCLI@2
@@ -14,6 +17,8 @@ steps:
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
+        set -euo pipefail
+
         az aks get-credentials \
           --resource-group ${{ parameters.resourceGroup }} \
           --name ${{ parameters.aksCluster }} \
@@ -24,5 +29,7 @@ steps:
           --set image.tag=${{ parameters.tag }} \
           -f ${{ parameters.helmPath }}/values-${{ parameters.namespace }}.yaml \
           --namespace ${{ parameters.namespace }} \
-          --create-namespace
+          --create-namespace \
+          ${{ if eq(parameters.wait, true) }} --wait --timeout ${{ parameters.timeout }} ${{ end }} \
+          ${{ if eq(parameters.atomic, true) }} --atomic ${{ end }}
     displayName: Deploy to ${{ parameters.aksCluster }}
