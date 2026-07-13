@@ -6,6 +6,7 @@ parameters:
   tag: ''
   namespace: ''
   helmPath: ''
+  deploymentStrategy: rolling   
   wait: false
   atomic: false
   timeout: '5m'
@@ -19,17 +20,117 @@ steps:
       inlineScript: |
         set -euo pipefail
 
+        RELEASE="${{ parameters.imageName }}-${{ parameters.namespace }}"
+        NS="${{ parameters.namespace }}"
+        IMAGE_REPO="${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}"
+        TAG="${{ parameters.tag }}"
+        HELM_PATH="${{ parameters.helmPath }}"
+        VALUES_FILE="${HELM_PATH}/values-${NS}.yaml"
+        STRATEGY="${{ parameters.deploymentStrategy }}"
+        WAIT="${{ parameters.wait }}"
+        ATOMIC="${{ parameters.atomic }}"
+        TIMEOUT="${{ parameters.timeout }}"
+
+        WAIT_ARGS=""
+        if [ "$WAIT" = "True" ] || [ "$WAIT" = "true" ]; then
+          WAIT_ARGS="--wait --timeout ${TIMEOUT}"
+        fi
+
+        ATOMIC_ARGS=""
+        if [ "$ATOMIC" = "True" ] || [ "$ATOMIC" = "true" ]; then
+          ATOMIC_ARGS="--atomic"
+        fi
+
         az aks get-credentials \
           --resource-group ${{ parameters.resourceGroup }} \
           --name ${{ parameters.aksCluster }} \
           --overwrite-existing
 
-        helm upgrade --install ${{ parameters.imageName }}-${{ parameters.namespace }} ${{ parameters.helmPath }} \
-          --set image.repository=${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }} \
-          --set image.tag=${{ parameters.tag }} \
-          -f ${{ parameters.helmPath }}/values-${{ parameters.namespace }}.yaml \
-          --namespace ${{ parameters.namespace }} \
+        helm upgrade --install "$RELEASE" "$HELM_PATH" \
+          --set image.repository="$IMAGE_REPO" \
+          --set image.tag="$TAG" \
+          -f "$VALUES_FILE" \
+          --namespace "$NS" \
           --create-namespace \
-          ${{ if eq(parameters.wait, true) }} --wait --timeout ${{ parameters.timeout }} ${{ end }} \
-          ${{ if eq(parameters.atomic, true) }} --atomic ${{ end }}
-    displayName: Deploy to ${{ parameters.aksCluster }}
+          $WAIT_ARGS \
+          $ATOMIC_ARGS \
+          --dry-run >/dev/null
+
+        if [ "$STRATEGY" = "blueGreen" ]; then
+          echo "Blue-green deployment to $RELEASE in namespace $NS"
+
+          kubectl delete deployment solar-system -n "$NS" --ignore-not-found
+
+          ACTIVE="blue"
+          if helm status "$RELEASE" -n "$NS" >/dev/null 2>&1; then
+            ACTIVE="$(helm get values "$RELEASE" -n "$NS" -o yaml | awk '/^blueGreen:/{f=1} f && /^  activeSlot:/{print $2; exit}' | tr -d '"')"
+            [ -z "$ACTIVE" ] && ACTIVE="blue"
+          fi
+
+          if [ "$ACTIVE" = "blue" ]; then
+            INACTIVE="green"
+          else
+            INACTIVE="blue"
+          fi
+
+          echo "Active slot: $ACTIVE, deploying new version to inactive slot: $INACTIVE"
+
+          if helm status "$RELEASE" -n "$NS" >/dev/null 2>&1; then
+            helm upgrade "$RELEASE" "$HELM_PATH" \
+              --reuse-values \
+              --set image.repository="$IMAGE_REPO" \
+              --set image.tag="$TAG" \
+              --set blueGreen.enabled=true \
+              --set blueGreen.activeSlot="$ACTIVE" \
+              --set blueGreen.slots."$INACTIVE".imageTag="$TAG" \
+              --namespace "$NS" \
+              $WAIT_ARGS
+          else
+            echo "First blue-green install"
+            helm upgrade --install "$RELEASE" "$HELM_PATH" \
+              --set image.repository="$IMAGE_REPO" \
+              --set image.tag="$TAG" \
+              -f "$VALUES_FILE" \
+              --set blueGreen.enabled=true \
+              --set blueGreen.activeSlot=blue \
+              --set blueGreen.slots.blue.imageTag="$TAG" \
+              --set blueGreen.slots.green.imageTag="$TAG" \
+              --namespace "$NS" \
+              --create-namespace \
+              $WAIT_ARGS
+            echo "Initial install complete; traffic on blue."
+            exit 0
+          fi
+
+          kubectl rollout status "deployment/solar-system-$INACTIVE" -n "$NS" --timeout="${TIMEOUT}"
+
+          echo "Switching traffic from $ACTIVE to $INACTIVE"
+          if ! helm upgrade "$RELEASE" "$HELM_PATH" \
+            --reuse-values \
+            --set blueGreen.activeSlot="$INACTIVE" \
+            --namespace "$NS" \
+            $WAIT_ARGS; then
+            echo "Traffic switch failed; reverting active slot to $ACTIVE"
+            helm upgrade "$RELEASE" "$HELM_PATH" \
+              --reuse-values \
+              --set blueGreen.activeSlot="$ACTIVE" \
+              --namespace "$NS" \
+              $WAIT_ARGS || true
+            exit 1
+          fi
+
+          echo "Blue-green deployment complete. Active slot: $INACTIVE"
+          exit 0
+        fi
+
+        echo "Rolling deployment to $RELEASE in namespace $NS"
+        helm upgrade --install "$RELEASE" "$HELM_PATH" \
+          --set image.repository="$IMAGE_REPO" \
+          --set image.tag="$TAG" \
+          --set blueGreen.enabled=false \
+          -f "$VALUES_FILE" \
+          --namespace "$NS" \
+          --create-namespace \
+          $WAIT_ARGS \
+          $ATOMIC_ARGS
+    displayName: Deploy to ${{ parameters.aksCluster }} (${{ parameters.deploymentStrategy }})
