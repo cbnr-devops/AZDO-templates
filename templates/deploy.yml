@@ -79,12 +79,12 @@ steps:
             helm upgrade "$RELEASE" "$HELM_PATH" \
               --reuse-values \
               --set image.repository="$IMAGE_REPO" \
-              --set image.tag="$TAG" \
               --set blueGreen.enabled=true \
               --set blueGreen.activeSlot="$ACTIVE" \
               --set blueGreen.slots."$INACTIVE".imageTag="$TAG" \
               --namespace "$NS" \
-              $WAIT_ARGS
+              $WAIT_ARGS \
+              $ATOMIC_ARGS
           else
             echo "First blue-green install"
             helm upgrade --install "$RELEASE" "$HELM_PATH" \
@@ -97,7 +97,8 @@ steps:
               --set blueGreen.slots.green.imageTag="$TAG" \
               --namespace "$NS" \
               --create-namespace \
-              $WAIT_ARGS
+              $WAIT_ARGS \
+              $ATOMIC_ARGS
             echo "Initial install complete; traffic on blue."
             exit 0
           fi
@@ -109,7 +110,8 @@ steps:
             --reuse-values \
             --set blueGreen.activeSlot="$INACTIVE" \
             --namespace "$NS" \
-            $WAIT_ARGS; then
+            $WAIT_ARGS \
+            $ATOMIC_ARGS; then
             echo "Traffic switch failed; reverting active slot to $ACTIVE"
             helm upgrade "$RELEASE" "$HELM_PATH" \
               --reuse-values \
