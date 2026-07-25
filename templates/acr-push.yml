@@ -2,28 +2,37 @@ parameters:
   imageName: ''
   tag: ''
   acrName: ''
+  azureSubscription: 'azure-connection'
 
 steps:
   - task: AzureCLI@2
     inputs:
-      azureSubscription: 'azure-connection'
+      azureSubscription: ${{ parameters.azureSubscription }}
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        set -e
+        set -euo pipefail
 
-        az acr login --name ${{ parameters.acrName }}
+        ACR_NAME="${{ parameters.acrName }}"
+        ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
+        IMAGE_NAME="${{ parameters.imageName }}"
+        TAG="${{ parameters.tag }}"
 
-        docker tag ${{ parameters.imageName }}:${{ parameters.tag }} \
-          ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:${{ parameters.tag }}
+        ACR_TOKEN="$(az acr login --name "$ACR_NAME" --expose-token --output tsv --query accessToken)"
+        echo "$ACR_TOKEN" | docker login "$ACR_LOGIN_SERVER" \
+          --username 00000000-0000-0000-0000-000000000000 \
+          --password-stdin
 
-        docker push ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:${{ parameters.tag }}
+        docker tag "$IMAGE_NAME:$TAG" \
+          "$ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG"
 
-        docker tag ${{ parameters.imageName }}:${{ parameters.tag }} \
-          ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:latest
+        docker push "$ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG"
 
-        docker push ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:latest
+        docker tag "$IMAGE_NAME:$TAG" \
+          "$ACR_LOGIN_SERVER/$IMAGE_NAME:latest"
 
-        docker rmi ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:${{ parameters.tag }} || true
-        docker rmi ${{ parameters.acrName }}.azurecr.io/${{ parameters.imageName }}:latest || true
+        docker push "$ACR_LOGIN_SERVER/$IMAGE_NAME:latest"
+
+        docker rmi "$ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG" || true
+        docker rmi "$ACR_LOGIN_SERVER/$IMAGE_NAME:latest" || true
     displayName: Push to ACR
