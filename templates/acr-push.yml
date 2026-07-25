@@ -18,6 +18,13 @@ steps:
         IMAGE_NAME="${{ parameters.imageName }}"
         TAG="${{ parameters.tag }}"
 
+        echo "Azure account used by service connection:"
+        az account show --query "{subscriptionId:id, tenantId:tenantId, user:user.name}" --output table
+
+        echo "Resolving ACR resource:"
+        az acr show --name "$ACR_NAME" --query "{name:name, loginServer:loginServer, resourceGroup:resourceGroup, id:id}" --output table
+
+        echo "Requesting ACR access token for $ACR_LOGIN_SERVER"
         ACR_TOKEN="$(az acr login --name "$ACR_NAME" --expose-token --output tsv --query accessToken)"
         echo "$ACR_TOKEN" | docker login "$ACR_LOGIN_SERVER" \
           --username 00000000-0000-0000-0000-000000000000 \
