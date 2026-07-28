@@ -31,6 +31,18 @@ steps:
         ATOMIC="${{ parameters.atomic }}"
         TIMEOUT="${{ parameters.timeout }}"
 
+        dump_diagnostics() {
+          echo "Deployment diagnostics for namespace $NS"
+          kubectl get all -n "$NS" -o wide || true
+          kubectl get events -n "$NS" --sort-by='.lastTimestamp' || true
+          kubectl describe deployment solar-system -n "$NS" || true
+          kubectl describe deployment solar-system-blue -n "$NS" || true
+          kubectl describe deployment solar-system-green -n "$NS" || true
+          kubectl describe pods -n "$NS" -l app=solar-system || true
+        }
+
+        trap 'dump_diagnostics' ERR
+
         WAIT_ARGS=""
         if [ "$WAIT" = "True" ] || [ "$WAIT" = "true" ]; then
           WAIT_ARGS="--wait --timeout ${TIMEOUT}"
